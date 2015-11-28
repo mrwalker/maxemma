@@ -1,0 +1,66 @@
+#! /usr/bin/env python
+
+'''
+Reference implementation of the educational language maxemma, designed to teach
+very young children to code.
+'''
+
+from pyparsing import (
+    Forward, Literal, OneOrMore, Word, alphas, nums, ParseException
+)
+
+
+class Parser(object):
+    def __init__(self):
+        self.context = {}
+
+    def syntax(self):
+        eq = Literal('=').suppress()
+        variable = Word(alphas)
+        numeric = Word(nums)
+        atom = variable | numeric
+        repeat = (numeric + OneOrMore(atom)).setParseAction(self.repeat)
+        expr = (variable | numeric).setParseAction(self.expr)
+        action = OneOrMore(repeat | expr)
+        assignment = (variable + eq + OneOrMore(atom)).setParseAction(self.assign)
+        return assignment | action
+
+    def parse(self, line):
+        try:
+            return self.syntax().parseString(line)
+        except ParseException as e:
+            print "Sorry, I don't understand"
+
+    def repl(self):
+        print 'Hello'
+        while True:
+            try:
+                self.parse(raw_input('> '))
+            except EOFError as e:
+                print 'Goodbye!'
+                return
+
+    def evaluate(self, action):
+        for a in action:
+            if a in self.context:
+                self.parse(self.context[a])
+            else:
+                print a
+
+    def repeat(self, string, location, tokens):
+        numeric = int(tokens[0])
+        program = ' '.join(tokens[1:])
+        for _ in xrange(numeric):
+            self.parse(program)
+
+    def expr(self, string, location, atom):
+        self.evaluate(atom)
+
+    def assign(self, string, location, tokens):
+        variable = tokens[0]
+        program = ' '.join(tokens[1:])
+        self.context[variable] = program
+
+
+if __name__ == '__main__':
+    Parser().repl()
