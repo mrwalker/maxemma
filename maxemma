@@ -6,7 +6,7 @@ very young children to code.
 '''
 
 from pyparsing import (
-    Forward, Literal, OneOrMore, Word, alphas, nums, ParseException
+    Literal, OneOrMore, Word, alphas, nums, SkipTo, LineEnd, ParseException
 )
 
 
@@ -16,13 +16,18 @@ class Parser(object):
 
     def syntax(self):
         eq = Literal('=').suppress()
+        question = Literal('?').suppress()
+        colon = Literal(':')
+
         variable = Word(alphas)
         numeric = Word(nums)
-        atom = variable | numeric
-        repeat = (numeric + OneOrMore(atom)).setParseAction(self.repeat)
-        expr = (variable | numeric).setParseAction(self.expr)
-        action = OneOrMore(repeat | expr)
-        assignment = (variable + eq + OneOrMore(atom)).setParseAction(self.assign)
+
+        repeat = (numeric + SkipTo(LineEnd())).setParseAction(self.repeat)
+        check = (question + variable + SkipTo(colon) + colon + SkipTo(LineEnd())).setParseAction(self.check)
+        expr = (variable | numeric).setParseAction(self.expression)
+        action = OneOrMore(repeat | check | expr)
+        assignment = (variable + eq + SkipTo(LineEnd())).setParseAction(self.assign)
+
         return assignment | action
 
     def parse(self, line):
@@ -53,8 +58,22 @@ class Parser(object):
         for _ in xrange(numeric):
             self.parse(program)
 
-    def expr(self, string, location, atom):
-        self.evaluate(atom)
+    def check(self, string, location, tokens):
+        #variable = tokens.pop(0) # Doesn't work with ParseResults
+        variable = tokens[0]
+        tokens = tokens[1:]
+
+        colon = tokens.index(':')
+        program_set = ' '.join(tokens[:colon])
+        program_unset = ' '.join(tokens[colon + 1:])
+
+        if variable in self.context:
+            self.parse(program_set)
+        else:
+            self.parse(program_unset)
+
+    def expression(self, string, location, expr):
+        self.evaluate(expr)
 
     def assign(self, string, location, tokens):
         variable = tokens[0]
