@@ -11,6 +11,7 @@ from pyparsing import (
 
 
 class Parser(object):
+
     def __init__(self):
         self.context = {}
 
@@ -23,17 +24,21 @@ class Parser(object):
         numeric = Word(nums)
 
         repeat = (numeric + SkipTo(LineEnd())).setParseAction(self.repeat)
-        check = (question + variable + SkipTo(colon) + colon + SkipTo(LineEnd())).setParseAction(self.check)
+        check = (
+            question + variable + SkipTo(colon) + colon + SkipTo(LineEnd())
+        ).setParseAction(self.check)
         expr = (variable | numeric).setParseAction(self.expression)
         action = OneOrMore(repeat | check | expr)
-        assignment = (variable + eq + SkipTo(LineEnd())).setParseAction(self.assign)
+        assignment = (
+            variable + eq + SkipTo(LineEnd())
+        ).setParseAction(self.assign)
 
         return assignment | action
 
     def parse(self, line):
         try:
             return self.syntax().parseString(line)
-        except ParseException as e:
+        except ParseException:
             print "Sorry, I don't understand"
 
     def repl(self):
@@ -41,7 +46,7 @@ class Parser(object):
         while True:
             try:
                 self.parse(raw_input('> '))
-            except EOFError as e:
+            except EOFError:
                 print 'Goodbye!'
                 return
 
@@ -59,7 +64,7 @@ class Parser(object):
             self.parse(program)
 
     def check(self, string, location, tokens):
-        #variable = tokens.pop(0) # Doesn't work with ParseResults
+        # variable = tokens.pop(0) # Doesn't work with ParseResults
         variable = tokens[0]
         tokens = tokens[1:]
 
